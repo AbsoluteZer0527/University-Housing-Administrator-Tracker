@@ -1,3 +1,4 @@
+import { UniversitySearchForm } from "@/components/univ-search";
 
 export default function Home() {
   return (
@@ -9,6 +10,8 @@ export default function Home() {
         <p className="text-gray-600 max-w-md mb-6">
           Search for university housing administrators, track outreach, and manage communication status.
         </p>
+
+      <UniversitySearchForm />
       </div>
     </main>
   );

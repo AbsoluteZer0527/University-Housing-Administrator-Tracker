@@ -1,15 +1,39 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../lib/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // make sure this points to your Supabase DB
+}
+
+model University {
+  id             String          @id @default(uuid())
+  name           String
+  website        String?         // optional
+  administrators Administrator[] // one-to-many
+}
+
+model Administrator {
+  id          String     @id @default(uuid())
+  name        String
+  role        String
+  email       String
+  phone       String?    // optional
+  office      String?    // optional
+  profileUrl  String?    // optional
+  sourceUrl   String?    // optional
+  department  String?    // optional
+  status      AdminStatus
+  university  University @relation(fields: [universityId], references: [id])
+  universityId String
+}
+
+enum AdminStatus {
+  todo
+  not_contacted
+  sent
+  declined
+  follow_up
+  complete
 }

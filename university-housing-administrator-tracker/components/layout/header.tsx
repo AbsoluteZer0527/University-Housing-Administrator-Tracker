@@ -12,7 +12,7 @@ export function Header() {
             Housing Admin Tracker
           </Link>
           <Link href="/">
-            <Button variant="ghost" size="sm">Home</Button>
+            <Button variant="ghost" className="bg-slate-100">Home</Button>
           </Link>
         </div>
 
