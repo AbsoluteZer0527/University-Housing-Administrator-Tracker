@@ -1,4 +1,5 @@
 import { UniversitySearchForm } from "@/components/univ-search";
+import { CategoryAdministratorsList } from "@/components/admin-category";
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
         </p>
 
       <UniversitySearchForm />
+      <CategoryAdministratorsList />
       </div>
     </main>
   );

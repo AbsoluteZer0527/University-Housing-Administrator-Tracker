@@ -47,7 +47,7 @@ export default async function UniversityPage({ params }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       <Link href="/" className="inline-flex items-center mb-6">
         <Button variant="ghost" size="sm">
           <ArrowLeft className="mr-2 h-4 w-4" />

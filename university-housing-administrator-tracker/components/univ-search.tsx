@@ -1,24 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Card, CardHeader, CardContent, CardDescription, CardTitle
+  Card,
+  CardHeader,
+  CardContent,
+  CardDescription,
+  CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
+const RECENT_KEY = "recentUniversitySearches";
+
 export function UniversitySearchForm() {
   const [universityName, setUniversityName] = useState("");
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const saved = localStorage.getItem(RECENT_KEY);
+    if (saved) {
+      setRecentSearches(JSON.parse(saved));
+    }
+  }, []);
+
+  const addToRecentSearches = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const updated = [trimmed, ...recentSearches.filter(n => n !== trimmed)].slice(0, 5);
+    setRecentSearches(updated);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!universityName.trim()) {
+    const trimmed = universityName.trim();
+    if (!trimmed) {
       toast.error("Please enter a university name");
       return;
     }
@@ -29,13 +53,14 @@ export function UniversitySearchForm() {
     const { data: universities, error } = await supabase
       .from("universities")
       .select("id")
-      .ilike("name", `%${universityName}%`)
+      .ilike("name", `%${trimmed}%`)
       .limit(1);
 
     if (error) {
       toast.error("Error searching university");
       console.error(error);
     } else if (universities && universities[0]) {
+      addToRecentSearches(trimmed);
       router.push(`/university/${universities[0].id}`);
     } else {
       toast.error("University not found");
@@ -64,6 +89,24 @@ export function UniversitySearchForm() {
             {isLoading ? "Searching..." : "Search"}
           </Button>
         </form>
+
+        {recentSearches.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Recent searches</h3>
+            <div className="flex flex-wrap gap-2">
+              {recentSearches.map((name) => (
+                <Button
+                  key={name}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUniversityName(name)}
+                >
+                  {name}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

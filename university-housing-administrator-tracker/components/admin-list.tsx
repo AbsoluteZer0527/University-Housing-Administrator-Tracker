@@ -91,7 +91,9 @@ export function AdministratorList({ administrators, universityId }: Administrato
         ) : (
           filteredAdmins.map((admin) => (
             <AdministratorCard
+            
               key={admin.id}
+              universityId={admin.university_id}
               administrator={admin}
               onStatusChange={handleStatusChange}
             />

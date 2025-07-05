@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client"; // Make sure this client e
 
 interface AdministratorCardProps {
   administrator: Administrator;
+  universityId: string;
   onStatusChange?: (adminId: string, status: AdminStatus) => void;
 }
 
