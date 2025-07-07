@@ -1,6 +1,6 @@
 "use client";
 
-import { JSX, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import type { Database } from "@/types";
 type Administrator = Database["public"]["Tables"]["administrators"]["Row"];
 type AdminStatus = Database["public"]["Enums"]["admin_status"];
@@ -19,7 +19,7 @@ import {
   ChevronDown, ChevronUp, Mail, Phone, MapPin, Link, Building
 } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client"; // Make sure this client exists for browser use
+import { createClient } from "@/lib/supabase/client";
 
 interface AdministratorCardProps {
   administrator: Administrator;
@@ -35,6 +35,11 @@ export function AdministratorCard({
   const [status, setStatus] = useState<AdminStatus>(administrator.status);
 
   const supabase = createClient();
+
+  // Update local status when administrator prop changes
+  useEffect(() => {
+    setStatus(administrator.status);
+  }, [administrator.status]);
 
   const getStatusLabel = (s: AdminStatus) => {
     const map = {
