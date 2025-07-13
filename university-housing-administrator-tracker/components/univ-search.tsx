@@ -50,7 +50,8 @@ export function UniversitySearchForm() {
     setIsLoading(true);
     const supabase = createClient();
 
-    const { data: universities, error } = await supabase
+    // Step 1: Try to find the university in Supabase
+    let { data: universities, error } = await supabase
       .from("universities")
       .select("id")
       .ilike("name", `%${trimmed}%`)
@@ -59,11 +60,58 @@ export function UniversitySearchForm() {
     if (error) {
       toast.error("Error searching university");
       console.error(error);
-    } else if (universities && universities[0]) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Step 2: If found, redirect immediately
+    if (universities && universities.length > 0) {
       addToRecentSearches(trimmed);
       router.push(`/university/${universities[0].id}`);
-    } else {
-      toast.error("University not found");
+      setIsLoading(false);
+      return;
+    }
+
+    // Step 3: If not found, trigger scraper
+    toast.info("University not found, attempting to scrape...");
+
+    try {
+      const scrapeRes = await fetch("/api/scrape", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ universityName: trimmed }),
+      });
+
+      const scrapeData = await scrapeRes.json();
+
+      if (!scrapeRes.ok) {
+        throw new Error(scrapeData?.message || "Scrape failed");
+      }
+
+      // Handle successful scraping
+      if (scrapeData.success) {
+        if (scrapeData.existing && scrapeData.redirect_to) {
+          // University already exists (found during scraping)
+          toast.success(`Found existing university with ${scrapeData.admins.length} administrators`);
+          addToRecentSearches(trimmed);
+          router.push(scrapeData.redirect_to);
+        } else if (scrapeData.university && scrapeData.university.id) {
+          // New university was created
+          toast.success(`Successfully scraped ${scrapeData.new_inserted || scrapeData.admins.length} administrators for ${trimmed}`);
+          addToRecentSearches(trimmed);
+          router.push(`/university/${scrapeData.university.id}`);
+        } else {
+          toast.error("Scraping succeeded but no university data returned");
+        }
+      } else {
+        throw new Error(scrapeData.message || "Scraping failed");
+      }
+
+    } catch (err: any) {
+      console.error("Scraping error:", err);
+      toast.error(err.message || "Failed to scrape university data");
     }
 
     setIsLoading(false);

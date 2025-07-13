@@ -57,7 +57,7 @@ export function AdministratorCard({
     const map = {
       not_contacted: "bg-gray-500",
       todo: "bg-indigo-500",
-      sent: "bg-blue-500",
+      sent: "bg-cyan-500",
       declined: "bg-red-500",
       follow_up: "bg-amber-500",
       complete: "bg-green-500"

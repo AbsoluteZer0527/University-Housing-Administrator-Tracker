@@ -12,8 +12,8 @@ interface Props {
 }
 
 export default async function UniversityPage({ params }: Props) {
-  const supabase =  await createClient();
-  const universityId = params.id;
+  const supabase = await createClient();
+  const { id: universityId } = await params;
 
   // Fetch university
   const { data: university, error: universityError } = await supabase
@@ -46,6 +46,13 @@ export default async function UniversityPage({ params }: Props) {
     );
   }
 
+  const housingPages = administrators 
+  ? [...new Set(administrators
+      .map(admin => admin.source_url)
+      .filter(Boolean)
+    )] as string[]
+  : [];
+
   return (
     <div className="space-y-6 p-4">
       <Link href="/" className="inline-flex items-center mb-6">
@@ -56,28 +63,54 @@ export default async function UniversityPage({ params }: Props) {
       </Link>
 
       <Card>
-        <CardHeader>
-          <CardTitle>{university.name}</CardTitle>
-          <CardDescription>
-            {university.website && (
+  <CardHeader>
+    <CardTitle>{university.name}</CardTitle>
+    <CardDescription>
+      {university.website && (
+        <a
+          href={university.website}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:underline"
+        >
+          {university.website}
+        </a>
+      )}
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    <p className="text-sm text-muted-foreground">
+      Total Administrators: {administrators?.length ?? 0}
+    </p>
+    
+    {/* Housing Pages Found */}
+    {housingPages.length > 0 && (
+      <div className="mt-4">
+        <p className="text-sm text-muted-foreground mb-2">
+          Housing Pages Found: {housingPages.length}
+        </p>
+        <div className="space-y-1">
+          {housingPages.map((page, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">
+                {index + 1}
+              </span>
               <a
-                href={university.website}
+                href={page}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-500 hover:underline"
+                className="text-xs text-blue-500 hover:underline break-all"
               >
-                {university.website}
+                {page}
               </a>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Total Administrators: {administrators?.length ?? 0}
-          </p>
-        </CardContent>
-      </Card>
-
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </CardContent>
+</Card>
+      
       <AdministratorList
         administrators={administrators ?? []}
         universityId={universityId}
