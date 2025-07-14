@@ -98,8 +98,15 @@ export function UniversitySearchForm() {
           addToRecentSearches(trimmed);
           router.push(scrapeData.redirect_to);
         } else if (scrapeData.university && scrapeData.university.id) {
-          // New university was created
-          toast.success(`Successfully scraped ${scrapeData.new_inserted || scrapeData.admins.length} administrators for ${trimmed}`);
+          // University was created (with or without admins)
+          if (scrapeData.no_admins_found) {
+            // No admins found but university created with housing pages
+            toast.warning(`University created with ${scrapeData.housing_pages_found?.length || 0} housing pages found, but no administrators extracted`);
+          } else {
+            // Admins were found and added
+            toast.success(`Successfully scraped ${scrapeData.new_inserted || scrapeData.admins.length} administrators for ${trimmed}`);
+          }
+          
           addToRecentSearches(trimmed);
           router.push(`/university/${scrapeData.university.id}`);
         } else {

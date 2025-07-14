@@ -15,11 +15,12 @@ const HOUSING_KEYWORDS = [
   "dormitory",
   "dorm",
   "student housing",
-  "on-campus",
   "off-campus",
   "residential life",
   "living",
-  "accommodation"
+  "accommodation",
+  "help-desk",
+  "off-campus-housing"
 ];
 
 const ADMIN_TITLES = [
@@ -30,7 +31,6 @@ const ADMIN_TITLES = [
   "assistant",
   "associate",
   "supervisor",
-  "dean",
   "staff"
 ];
 
@@ -279,12 +279,13 @@ async function findExistingUniversity(universityName: string): Promise<any | nul
   return null;
 }
 
-async function createUniversity(universityName: string, domain: string | null): Promise<any> {
+async function createUniversity(universityName: string, domain: string | null, housingPages: string[] = []): Promise<any> {
   console.log(`➕ Creating new university: ${universityName}`);
   
   const newUniversity = {
     name: universityName,
-    website: domain ? `https://${domain}` : null
+    website: domain ? `https://${domain}` : null,
+    housing_pages_discovered: housingPages
   };
 
   const { data: created, error: createError } = await supabase
@@ -294,6 +295,32 @@ async function createUniversity(universityName: string, domain: string | null): 
     .single();
 
   if (createError) {
+    // If the housing_pages_discovered column doesn't exist, try without it
+    if (createError.message?.includes('housing_pages_discovered')) {
+      console.log('📝 housing_pages_discovered column not found, creating without it');
+      const fallbackUniversity = {
+        name: universityName,
+        website: domain ? `https://${domain}` : null
+      };
+      
+      const { data: fallbackCreated, error: fallbackError } = await supabase
+        .from("universities")
+        .insert(fallbackUniversity)
+        .select()
+        .single();
+        
+      if (fallbackError) {
+        throw new Error(`Failed to create university "${universityName}": ${fallbackError.message}`);
+      }
+      
+      if (!fallbackCreated) {
+        throw new Error(`University creation returned no data for: ${universityName}`);
+      }
+      
+      console.log(`✅ Created new university: ${fallbackCreated.name} (ID: ${fallbackCreated.id})`);
+      return fallbackCreated;
+    }
+    
     throw new Error(`Failed to create university "${universityName}": ${createError.message}`);
   }
 
@@ -348,11 +375,27 @@ function scoreAndFilterAdministrators(admins: HousingAdmin[]): HousingAdmin[] {
     if (email.includes('noreply') || email.includes('donotreply')) score -= 50;
     if (email.includes('signup') || email.includes('unsubscribe')) score -= 50;
     
+    // Contact form handling - give them a minimal score but don't reject
+    if (email === 'contact-form') {
+      score = 5; // Low but positive score
+    }
+    
+    // Boost score for real names and specific emails
+    if (name.includes(' ') && !name.includes('contact') && !name.includes('form')) {
+      score += 15; // Looks like a real person's name
+    }
+    
+    if (email.includes('uclahousing') || email.includes('housing.ucla')) {
+      score += 20; // Specific housing department email
+    }
+    
     return { ...admin, relevance_score: score };
   });
   
-  // Filter out admins with negative or very low scores
-  const filtered = scoredAdmins.filter(admin => admin.relevance_score > 0);
+  // Filter out admins with very negative scores, but keep contact forms with minimal scores
+  const filtered = scoredAdmins.filter(admin => 
+    admin.relevance_score > -10 // More lenient filtering
+  );
   
   // Sort by relevance score (highest first)
   filtered.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
@@ -367,15 +410,44 @@ function scoreAndFilterAdministrators(admins: HousingAdmin[]): HousingAdmin[] {
 
 function removeDuplicateAdmins(admins: HousingAdmin[]): HousingAdmin[] {
   const seen = new Set<string>();
-  return admins.filter(admin => {
+  const filtered: HousingAdmin[] = [];
+  
+  // First, count contact forms to limit them
+  let contactFormCount = 0;
+  
+  for (const admin of admins) {
+    // Create unique key for comparison
     const key = `${admin.email.toLowerCase()}-${normalizeUniversityName(admin.admin_name)}`;
+    
+    // Special handling for contact forms - only keep one per source URL
+    if (admin.email === 'contact-form') {
+      const contactFormKey = `contact-form-${admin.source_url}`;
+      if (seen.has(contactFormKey)) {
+        console.log(`⏭️ Removing duplicate contact form from: ${admin.source_url}`);
+        continue;
+      }
+      seen.add(contactFormKey);
+      contactFormCount++;
+      
+      // Limit contact forms to maximum of 2
+      if (contactFormCount > 2) {
+        console.log(`⏭️ Limiting contact forms - skipping: ${admin.source_url}`);
+        continue;
+      }
+    }
+    
+    // Regular duplicate check
     if (seen.has(key)) {
       console.log(`⏭️ Removing duplicate: ${admin.admin_name} (${admin.email})`);
-      return false;
+      continue;
     }
+    
     seen.add(key);
-    return true;
-  });
+    filtered.push(admin);
+  }
+  
+  console.log(`📊 Filtered ${admins.length - filtered.length} duplicates, kept ${filtered.length} unique administrators`);
+  return filtered;
 }
 
 async function checkForDuplicateAdministrators(universityId: string, admins: HousingAdmin[]): Promise<HousingAdmin[]> {
@@ -570,6 +642,9 @@ async function searchHousingPages(universityName: string): Promise<string[]> {
     `${universityName} residential life contact`,
     `${universityName} housing staff directory`,
     `${universityName} housing administration`,
+    `${universityName} housing communities`,
+    `${universityName} residential communities`,
+    `${universityName} residence halls staff`,
     `${universityName} housing`,
     `${universityName} residential life`,
     `${universityName} student housing`,
@@ -584,7 +659,11 @@ async function searchHousingPages(universityName: string): Promise<string[]> {
       `site:${domain} "contact us" housing`,
       `site:${domain} residential contact`,
       `site:${domain} housing staff`,
-      `site:${domain} housing administration`
+      `site:${domain} housing administration`,
+      `site:${domain} housing communities`,
+      `site:${domain} residential communities`,
+      `site:${domain} "residence halls"`,
+      `site:${domain} "housing directory"`
     );
   }
 
@@ -673,11 +752,18 @@ async function searchHousingPages(universityName: string): Promise<string[]> {
       }
     }
 
-    // Try common housing URL patterns
+    // Try common housing URL patterns including community-specific paths
     const commonHousingPaths = [
       `https://${domain}/housing/contact`,
       `https://${domain}/housing/contact-us`,
+      `https://${domain}/housing/communities`,
+      `https://${domain}/housing/staff`,
+      `https://${domain}/housing/directory`,
       `https://${domain}/residential-life/contact`,
+      `https://${domain}/residential-life/communities`,
+      `https://${domain}/residential-life/staff`,
+      `https://${domain}/reslife/communities`,
+      `https://${domain}/reslife/contact`,
       `https://${domain}/housing`,
       `https://${domain}/residential-life`,
       `https://${domain}/student-life/housing`,
@@ -768,7 +854,10 @@ async function findContactPages($: cheerio.CheerioAPI, baseUrl: string): Promise
   const contactLinks: string[] = [];
   const contactKeywords = [
     'contact us', 'contact', 'get in touch', 'reach us', 'contact information',
-    'staff directory', 'directory', 'administration', 'team', 'staff'
+    'staff directory', 'directory', 'administration', 'team', 'staff',
+    'communities', 'residential communities', 'housing communities',
+    'residence halls', 'apartments', 'graduate housing', 'family housing',
+    'undergraduate housing', 'meet the staff', 'our team', 'housing staff'
   ];
 
   $("a[href]").each((_, el) => {
@@ -801,7 +890,52 @@ async function findContactPages($: cheerio.CheerioAPI, baseUrl: string): Promise
     }
   });
 
-  return contactLinks.slice(0, 5); // Limit to 5 contact pages to avoid too many requests
+  // Also look for housing community/residence pages that might have staff info
+  await findHousingCommunityPages($, baseUrl, contactLinks);
+
+  return contactLinks.slice(0, 10); // Increase limit to 10 for more comprehensive coverage
+}
+
+async function findHousingCommunityPages($: cheerio.CheerioAPI, baseUrl: string, contactLinks: string[]): Promise<void> {
+  console.log(`🏘️ Looking for housing community pages on ${baseUrl}`);
+  
+  const communityKeywords = [
+    'communities', 'residence halls', 'residential communities', 'housing communities',
+    'apartments', 'graduate housing', 'undergraduate housing', 'family housing',
+    'north campus', 'south campus', 'east campus', 'west campus',
+    'residence hall', 'apartment complex', 'graduate apartments',
+    'student housing', 'living communities', 'residential areas'
+  ];
+
+  $("a[href]").each((_, el) => {
+    const href = $(el).attr("href");
+    const text = $(el).text().toLowerCase().trim();
+    const title = $(el).attr("title")?.toLowerCase() || "";
+
+    if (!href) return;
+
+    // Check if this looks like a housing community page
+    const isCommunityLink = communityKeywords.some(keyword => 
+      text.includes(keyword) || title.includes(keyword) || href.toLowerCase().includes(keyword)
+    );
+
+    if (isCommunityLink) {
+      try {
+        const fullUrl = href.startsWith('http') ? href : new URL(href, baseUrl).toString();
+        
+        // Only include if it's from the same domain and not already added
+        const baseHost = new URL(baseUrl).hostname;
+        const linkHost = new URL(fullUrl).hostname;
+        
+        if (linkHost === baseHost && !contactLinks.includes(fullUrl)) {
+          contactLinks.push(fullUrl);
+          console.log(`   🏘️ Found community link: ${text} → ${fullUrl}`);
+        }
+      } catch (err) {
+        // Invalid URL, skip
+      }
+    }
+  });
 }
 
 async function scrapePageForAdmins($: cheerio.CheerioAPI, universityName: string, url: string, admins: HousingAdmin[]): Promise<void> {
@@ -849,9 +983,127 @@ async function scrapePageForAdmins($: cheerio.CheerioAPI, universityName: string
     });
   });
 
-  // Look for structured contact information (like the UCSD example)
-  await extractStructuredContacts($, universityName, url, admins);
+    // Also try to find contact information in more general sections if we don't have many results
+    if (admins.length < 3) {
+      console.log("🔄 Found few admins, trying broader search...");
+      
+      const emails = extractEmails($.html());
+      const phones = extractPhones($.html());
+      
+      emails.forEach(email => {
+        // Skip if we already have this email
+        const emailExists = admins.some(admin => admin.email === email);
+        if (emailExists) return;
+        
+        // Look for context around each email
+        $("*").each((_, el) => {
+          const $el = $(el);
+          if ($el.text().includes(email)) {
+            const { name, title } = extractNameAndTitle($el, email);
+            if (name && name.length > 1) {
+              admins.push({
+                university_name: universityName,
+                admin_name: name,
+                title: title || "Contact",
+                email,
+                phone: phones[0] ?? undefined,
+                department: "Housing",
+                scraped_at: new Date().toISOString(),
+                source_url: url
+              });
+              
+              console.log(`✅ Found broader contact: ${name} (${email})`);
+            }
+          }
+        });
+      });
+    }
 }
+
+async function extractSimpleDataAttributes($: cheerio.CheerioAPI, universityName: string, url: string, admins: HousingAdmin[]): Promise<void> {
+  console.log(`🔍 Looking for data attributes on ${url}`);
+  
+  // Look for simple data attributes that are commonly used
+  $('[data-email]').each((_, el) => {
+    const $el = $(el);
+    const rawEmail = $el.attr('data-email') || $el.data('email');
+    const email = typeof rawEmail === "string" ? rawEmail : "";
+    const rawName = $el.attr('data-name') || $el.data('name') || $el.text().trim();
+    const name = typeof rawName === "string" ? rawName : "";
+    const rawTitle = $el.attr('data-title') || $el.data('title') || $el.attr('data-role') || $el.data('role');
+    const title = typeof rawTitle === "string" ? rawTitle : "";
+    
+    if (email && isValidSimpleEmail(email)) {
+      const cleanName = name && isValidName(name) ? name : "Housing Staff";
+      const cleanTitle = title && isValidTitle(title) ? title : "Housing Contact";
+      
+      admins.push({
+        university_name: universityName,
+        admin_name: cleanName,
+        title: cleanTitle,
+        email: email,
+        department: "Housing",
+        scraped_at: new Date().toISOString(),
+        source_url: url
+      });
+      
+      console.log(`✅ Found data attribute admin: ${cleanName} (${email})`);
+    }
+  });
+
+  // Also check for common staff/person elements that might have hidden contact info
+  $('.staff-member, .person, .contact-person, .team-member').each((_, el) => {
+    const $el = $(el);
+    
+    // Look for data attributes or hidden elements within
+    const rawEmail = $el.find('[data-email]').attr('data-email') || 
+                    $el.attr('data-email') ||
+                    $el.find('input[type="hidden"][name*="email"]').val();
+    
+    const email = typeof rawEmail === "string" ? rawEmail : "";
+    
+    if (email && isValidSimpleEmail(email)) {
+      const rawName = $el.find('.name, .staff-name, h1, h2, h3, h4').first().text().trim() || 
+                     $el.attr('data-name') || 
+                     "";
+      const name = typeof rawName === "string" ? rawName : "";
+      
+      const rawTitle = $el.find('.title, .role, .position').first().text().trim() || 
+                      $el.attr('data-title') || 
+                      "";
+      const title = typeof rawTitle === "string" ? rawTitle : "";
+      
+      const cleanName = name && isValidName(name) ? name : "Housing Staff";
+      const cleanTitle = title && isValidTitle(title) ? title : "Housing Contact";
+      
+      admins.push({
+        university_name: universityName,
+        admin_name: cleanName,
+        title: cleanTitle,
+        email: email,
+        department: "Housing",
+        scraped_at: new Date().toISOString(),
+        source_url: url
+      });
+      
+      console.log(`✅ Found staff element admin: ${cleanName} (${email})`);
+    }
+  });
+}
+
+function isValidSimpleEmail(email: string): boolean {
+  if (!email || typeof email !== 'string') return false;
+  
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email) && 
+         !email.includes('.png') && 
+         !email.includes('.jpg') &&
+         !email.includes('noreply') &&
+         !email.includes('donotreply') &&
+         email.length < 100;
+}
+
+
 
 async function extractStructuredContacts($: cheerio.CheerioAPI, universityName: string, url: string, admins: HousingAdmin[]): Promise<void> {
   // Look for patterns like "Department Name: Phone Number Email"
@@ -892,10 +1144,12 @@ async function extractStructuredContacts($: cheerio.CheerioAPI, universityName: 
         }
 
         if (departmentName || phoneNumber) {
+          const cleanDepartmentName = departmentName || "Housing Contact";
+          
           const admin: HousingAdmin = {
             university_name: universityName,
-            admin_name: departmentName || "Housing Contact",
-            title: determineTitleFromDepartment(departmentName),
+            admin_name: cleanDepartmentName,
+            title: determineTitleFromDepartment(cleanDepartmentName),
             email: email,
             phone: phoneNumber,
             department: "Housing",
@@ -945,10 +1199,13 @@ function extractContactInfo($section: cheerio.Cheerio<any>, email: string): { na
           name = candidate;
           
           // Look for title in adjacent lines
-          if (j > 0 && isValidTitle(lines[j - 1])) {
-            title = lines[j - 1];
-          } else if (j < lines.length - 1 && isValidTitle(lines[j + 1])) {
-            title = lines[j + 1];
+          const prevLine = j > 0 ? lines[j - 1] : "";
+          const nextLine = j < lines.length - 1 ? lines[j + 1] : "";
+          
+          if (prevLine && isValidTitle(prevLine)) {
+            title = prevLine;
+          } else if (nextLine && isValidTitle(nextLine)) {
+            title = nextLine;
           }
           break;
         }
@@ -1060,30 +1317,46 @@ export async function POST(req: Request) {
     }
 
     if (allAdmins.length === 0) {
+      // Still create the university even if no admins found
+      const domain = await guessUniversityDomain(universityName);
+      const university = existingUniversity || await createUniversity(universityName, domain, housingPages);
+
       return NextResponse.json({ 
-        success: false,
-        message: `No administrators found from ${housingPages.length} housing pages for ${universityName}.`,
+        success: true,
+        university: university,
+        admins: [],
+        message: `No administrators found from ${housingPages.length} housing pages for ${universityName}, but university created successfully.`,
         housing_pages_found: housingPages,
-        errors: errors,
-        suggestion: "The housing pages might not contain contact information, or the page structure might be different than expected."
-      }, { status: 404 });
+        no_admins_found: true,
+        total_found: 0,
+        suggestion: "The housing pages were found but may not contain easily extractable contact information. You can try visiting the pages manually."
+      });
     }
 
     // Step 3: Score and filter administrators by relevance
     const scoredAdmins = scoreAndFilterAdministrators(allAdmins);
     
     if (scoredAdmins.length === 0) {
+      // Still create the university even if no relevant admins found
+      const domain = await guessUniversityDomain(universityName);
+      const university = existingUniversity || await createUniversity(universityName, domain, housingPages);
+
       return NextResponse.json({ 
-        success: false,
-        message: `Found ${allAdmins.length} potential contacts, but none appear to be relevant housing administrators.`,
+        success: true,
+        university: university,
+        admins: [],
+        message: `Found ${allAdmins.length} potential contacts, but none appear to be relevant housing administrators. University created successfully.`,
         housing_pages_found: housingPages,
-        suggestion: "The contacts found may be general university contacts rather than housing-specific staff."
-      }, { status: 404 });
+        no_admins_found: true,
+        total_found: allAdmins.length,
+        filtered_relevant: 0,
+        suggestion: "The contacts found may be general university contacts rather than housing-specific staff. You can try visiting the housing pages manually."
+      });
     }
 
     // Step 4: Save to database
     const domain = await guessUniversityDomain(universityName);
-    const university = existingUniversity || await createUniversity(universityName, domain);
+    const university = existingUniversity || await createUniversity(universityName, domain, housingPages);
 
     // Remove duplicates based on email within the scraped data
     const uniqueAdmins = removeDuplicateAdmins(scoredAdmins);
