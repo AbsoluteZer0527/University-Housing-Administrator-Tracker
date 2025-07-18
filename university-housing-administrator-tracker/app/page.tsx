@@ -50,7 +50,10 @@ export default function Home() {
           University Housing Administrator Tracker
         </h1>
         <p className="text-gray-600 max-w-md mb-6">
-          Search for university housing administrators, track outreach, and manage communication status.
+          Search for university housing administrators, track outreach, and manage communication status. 
+        </p>
+        <p className="text-gray-600 max-w-md mb-6">
+          Note: The scraper will run at most 10 minutes, just wait until you get some result.
         </p>
         
         <UniversitySearchForm />
