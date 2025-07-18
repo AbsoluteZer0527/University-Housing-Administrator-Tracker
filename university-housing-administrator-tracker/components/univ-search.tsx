@@ -51,7 +51,7 @@ export function UniversitySearchForm() {
     const supabase = createClient();
 
     // Step 1: Try to find the university in Supabase
-    let { data: universities, error } = await supabase
+    const { data: universities, error } = await supabase
       .from("universities")
       .select("id")
       .ilike("name", `%${trimmed}%`)
@@ -116,9 +116,10 @@ export function UniversitySearchForm() {
         throw new Error(scrapeData.message || "Scraping failed");
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Scraping error:", err);
-      toast.error(err.message || "Failed to scrape university data");
+      const errorMsg = err instanceof Error ? err.message : "Failed to scrape university data";
+      toast.error(errorMsg);
     }
 
     setIsLoading(false);

@@ -33,11 +33,6 @@ export function AuthButton() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // User state will be updated automatically by the auth state change listener
-  };
-
   if (loading) {
     return <div className="flex items-center gap-4">Loading...</div>;
   }

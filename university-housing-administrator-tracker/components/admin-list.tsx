@@ -20,7 +20,7 @@ interface AdministratorListProps {
   universityId: string;
 }
 
-export function AdministratorList({ administrators, universityId }: AdministratorListProps) {
+export function AdministratorList({ administrators }: AdministratorListProps) {
   const [allAdmins, setAllAdmins] = useState<Administrator[]>(administrators);
   const [filteredAdmins, setFilteredAdmins] = useState<Administrator[]>(administrators);
   const [statusFilter, setStatusFilter] = useState<string>("all");

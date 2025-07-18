@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function UniversityPage({ params }: Props) {

@@ -16,7 +16,7 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger
 } from "@/components/ui/collapsible";
 import {
-  ChevronDown, ChevronUp, Mail, Phone, MapPin, Link, Building
+  ChevronDown, ChevronUp, Mail, Phone, Link
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";

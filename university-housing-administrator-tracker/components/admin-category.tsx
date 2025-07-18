@@ -17,7 +17,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   restrictToVerticalAxis,
@@ -26,13 +25,11 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import type { Database } from "@/types";
 
 type Administrator = Database["public"]["Tables"]["administrators"]["Row"];
-type University = Database["public"]["Tables"]["universities"]["Row"];
+//type University = Database["public"]["Tables"]["universities"]["Row"];
 type AdminStatus = Administrator["status"];
 
 interface AdminWithUniversity extends Administrator {
@@ -91,7 +88,7 @@ export function CategoryAdministratorsList() {
       };
 
       for (const admin of admins) {
-        const universityName = (admin as any).universities?.name || "Unknown";
+        const universityName = (admin as { universities?: { name?: string } }).universities?.name || "Unknown";
         const status = admin.status as AdminStatus;
         grouped[status]?.push({ ...admin, universityName });
         }
@@ -105,11 +102,11 @@ export function CategoryAdministratorsList() {
 
   const handleStatusChange = (
     adminId: string,
-    universityId: string,
+    //universityId: string,
     newStatus: AdminStatus
   ) => {
     setCategorizedAdmins((prev) => {
-      const allAdmins = Object.entries(prev).flatMap(([_, list]) => list);
+      const allAdmins = Object.entries(prev).flatMap(([, list]) => list);
       const admin = allAdmins.find((a) => a.id === adminId);
       if (!admin) return prev;
 
@@ -153,9 +150,6 @@ export function CategoryAdministratorsList() {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragEnd={(event: DragEndEvent) => {
-        // Optional: implement drag & drop reordering
-      }}
       modifiers={[restrictToVerticalAxis]}
     >
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-8 w-full">
@@ -185,7 +179,7 @@ export function CategoryAdministratorsList() {
                         administrator={admin}
                         universityId={admin.university_id}
                         onStatusChange={(id, status) =>
-                          handleStatusChange(id, admin.university_id, status)
+                          handleStatusChange(id, status)
                         }
                       />
                       <p className="text-xs text-muted-foreground text-right mt-1">

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import * as cheerio from "cheerio";
+import type { Element } from "domhandler";
+import type { AnyNode } from "domhandler";
+
 import axios from "axios";
 
 const supabase = createClient(
@@ -107,6 +110,12 @@ type HousingAdmin = {
   scraped_at: string;
   source_url?: string;
   relevance_score?: number;
+};
+
+type University = {
+  id: string;
+  name: string;
+  website?: string | null;
 };
 
 // Enhanced Axios Config with Better Headers
@@ -256,7 +265,7 @@ async function tryFallbackDomainStrategies(universityName: string): Promise<stri
   console.log("🔄 Trying fallback domain strategies...");
   
   const lowerName = universityName.toLowerCase();
-  let fallbackDomains: string[] = [];
+  const fallbackDomains: string[] = [];
   
   // Enhanced UC system patterns
   if (lowerName.includes('university of california')) {
@@ -540,7 +549,7 @@ function extractFullUrl(url: string): string | null {
 }
 
 // Enhanced Contact Information Extraction
-function extractContactInfo($section: cheerio.Cheerio<any>, email: string): { name: string; title?: string; isContactForm: boolean } {
+function extractContactInfo($section: cheerio.Cheerio<AnyNode>, email: string): { name: string; title?: string; isContactForm: boolean } {
   const text = $section.text();
   const html = $section.html() || "";
   
@@ -922,10 +931,12 @@ async function scanForLocationStaff($: cheerio.CheerioAPI, universityName: strin
 }
 
 // Fixed Table Structure Extraction
-function extractFromTableStructure($table: cheerio.Cheerio<any>, universityName: string, url: string, admins: HousingAdmin[], cheerioInstance: cheerio.CheerioAPI): void {
+function extractFromTableStructure($table: cheerio.Cheerio<AnyNode>, universityName: string, url: string, admins: HousingAdmin[], cheerioInstance: cheerio.CheerioAPI): void {
   $table.find('tr').each((_, row) => {
     const $row = cheerioInstance(row);
-    const cells = $row.find('td, th').map((_: any, cell: any) => cheerioInstance(cell).text().trim()).get();
+    const cells = $row.find('td, th').map((_, cell: Element) => 
+      cheerioInstance(cell).text().trim()
+      ).get();
     
     if (cells.length >= 2) {
       const rowText = cells.join(' ');
@@ -1100,7 +1111,7 @@ async function checkForDuplicateAdministrators(universityId: string, admins: Hou
 }
 
 // Enhanced University Management
-async function findExistingUniversity(universityName: string): Promise<any | null> {
+async function findExistingUniversity(universityName: string): Promise<University | null> {
   const nameVariations = generateUniversityVariations(universityName);
   console.log(`🔍 Checking for existing university with variations:`, nameVariations);
 
@@ -1116,7 +1127,7 @@ async function findExistingUniversity(universityName: string): Promise<any | nul
   return null;
 }
 
-async function createUniversity(universityName: string, domain: string | null, housingPages: string[] = []): Promise<any> {
+async function createUniversity(universityName: string, domain: string | null, housingPages: string[] = []): Promise<University> {
   console.log(`➕ Creating new university: ${universityName}`);
   
   const newUniversity = {
@@ -1202,9 +1213,9 @@ export async function POST(req: Request) {
     const scrapingResults: { url: string; success: boolean; count: number; error?: string }[] = [];
     const startTime = Date.now();
     let timedOut = false;
-    for (const url of housingPages) {
+    for (const {} of housingPages) {
       const scrapingPromise = (async () => {
-  for (const url of housingPages) {
+        for (const url of housingPages) {
     // Check timeout before each page
     if (Date.now() - startTime > SCRAPING_TIMEOUT_MS) {
       console.log(`⏰ Scraping timeout reached after ${Math.round((Date.now() - startTime) / 1000)}s`);
@@ -1244,8 +1255,10 @@ export async function POST(req: Request) {
             allAdmins.push(...additionalAdmins);
             scrapingResults.push({ url: additionalUrl, success: true, count: additionalAdmins.length });
             console.log(`✅ Scraped ${additionalAdmins.length} additional admins from ${additionalUrl}`);
-          } catch (err: any) {
-            const errorMsg = err.message === 'Page timeout' ? 'Page timeout (2min)' : (err.message || 'Unknown error');
+          } catch (err: unknown) {
+            const errorMsg = err instanceof Error && err.message === 'Page timeout' 
+              ? 'Page timeout (2min)' 
+              : (err instanceof Error ? err.message : 'Unknown error');
             scrapingResults.push({ url: additionalUrl, success: false, count: 0, error: errorMsg });
             console.warn(`⚠️ Failed to scrape additional page ${additionalUrl}: ${errorMsg}`);
           }
@@ -1253,10 +1266,12 @@ export async function POST(req: Request) {
         
         if (timedOut) break;
       }
-    } catch (err: any) {
-      const errorMsg = err.message === 'Page timeout' ? 'Page timeout (2min)' : (err.message || 'Unknown error');
-      scrapingResults.push({ url, success: false, count: 0, error: errorMsg });
-      console.warn(`⚠️ Failed to scrape ${url}: ${errorMsg}`);
+    } catch (err: unknown) {
+        const errorMsg = err instanceof Error && err.message === 'Page timeout' 
+          ? 'Page timeout (2min)' 
+          : (err instanceof Error ? err.message : 'Unknown error');
+        scrapingResults.push({ url, success: false, count: 0, error: errorMsg });
+        console.warn(`⚠️ Failed to scrape ${url}: ${errorMsg}`);
     }
   }
 })();
@@ -1410,32 +1425,33 @@ async function discoverCommunityPages(mainUrl: string): Promise<string[]> {
       }
     });
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("❌ Enhanced scraping failed:", err);
     
     let errorMessage = "Enhanced scraping failed";
     let statusCode = 500;
     
-    if (err.message.includes("Could not find")) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    
+    if (errMsg.includes("Could not find")) {
       errorMessage = `Could not find the official website for "${universityName}". Please verify the university name.`;
       statusCode = 404;
-    } else if (err.message.includes("timeout")) {
+    } else if (errMsg.includes("timeout")) {
       errorMessage = `Request timeout while accessing university website. The site may be slow or temporarily unavailable.`;
       statusCode = 503;
-    } else if (err.message.includes("Database error")) {
-      errorMessage = `Database operation failed: ${err.message}`;
+    } else if (errMsg.includes("Database error")) {
+      errorMessage = `Database operation failed: ${errMsg}`;
       statusCode = 500;
     } else {
-      errorMessage = `Unexpected error: ${err.message}`;
+      errorMessage = `Unexpected error: ${errMsg}`;
     }
 
     return NextResponse.json({ 
       success: false,
       message: errorMessage,
-      error: err.message,
+      error: errMsg,
       university_name: universityName,
       timestamp: new Date().toISOString()
     }, { status: statusCode });
-    
   }
 }
