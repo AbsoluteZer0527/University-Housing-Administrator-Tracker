@@ -293,29 +293,75 @@ function generateUniversityVariations(universityName: string): string[] {
   const lowerInput = universityName.toLowerCase();
   
   // Check if input matches any California university
+  // Check if input matches any California university (exact or specific campus match)
+// Smart matching for California universities
+// First, try exact matches (input matches full name or abbreviation)
+let matched = false;
+
+for (const [fullName, abbreviations] of Object.entries(californiaUniversities)) {
+  // Check if input exactly matches the full name
+  if (lowerInput === fullName) {
+    abbreviations.forEach(abbrev => {
+      variations.add(abbrev);
+      variations.add(abbrev.toUpperCase());
+    });
+    variations.add(fullName);
+    matched = true;
+    break;
+  }
+  
+  // Check if input exactly matches any abbreviation
+  if (abbreviations.some(abbrev => lowerInput === abbrev.toLowerCase())) {
+    variations.add(fullName);
+    abbreviations.forEach(abbrev => {
+      variations.add(abbrev);
+      variations.add(abbrev.toUpperCase());
+    });
+    matched = true;
+    break;
+  }
+}
+
+// If no exact match found, try partial matches for UC campuses
+if (!matched) {
   for (const [fullName, abbreviations] of Object.entries(californiaUniversities)) {
-    if (lowerInput.includes(fullName) || fullName.includes(lowerInput)) {
-      abbreviations.forEach(abbrev => {
-        variations.add(abbrev);
-        variations.add(abbrev.toUpperCase());
-      });
-      variations.add(fullName);
-      break;
+    // For UC system, check if the campus name appears in input
+    if (fullName.startsWith('university of california')) {
+      const campus = fullName.replace('university of california ', '');
+      
+      // Check if input contains the campus name specifically
+      if ((lowerInput.includes('university of california') && lowerInput.includes(campus)) ||
+          (lowerInput.includes('uc ') && lowerInput.includes(campus)) ||
+          (lowerInput === campus)) {
+        
+        variations.add(fullName);
+        abbreviations.forEach(abbrev => {
+          variations.add(abbrev);
+          variations.add(abbrev.toUpperCase());
+        });
+        break;
+      }
     }
     
-    // Check if input matches any abbreviation
-    if (abbreviations.some(abbrev => 
-        lowerInput === abbrev.toLowerCase() || 
-        lowerInput.includes(abbrev.toLowerCase())
-    )) {
-      variations.add(fullName);
-      abbreviations.forEach(abbrev => {
-        variations.add(abbrev);
-        variations.add(abbrev.toUpperCase());
-      });
-      break;
+    // For non-UC schools, check partial matches
+    else {
+      const schoolKeywords = fullName.split(' ').filter(word => 
+        !['university', 'of', 'california', 'state', 'college', 'institute', 'technology'].includes(word)
+      );
+      
+      if (schoolKeywords.some(keyword => 
+          lowerInput.includes(keyword) && keyword.length > 3
+      )) {
+        variations.add(fullName);
+        abbreviations.forEach(abbrev => {
+          variations.add(abbrev);
+          variations.add(abbrev.toUpperCase());
+        });
+        break;
+      }
     }
   }
+}
 
   // Rest of existing logic for general patterns...
   const abbreviations: { [key: string]: string[] } = {
@@ -423,14 +469,16 @@ async function tryFallbackDomainStrategies(universityName: string): Promise<stri
     'san diego state university': 'sdsu.edu',
     'san francisco state university': 'sfsu.edu',
     'humboldt state university': 'humboldt.edu',
+    'university of california santa cruz': 'ucsc.edu',  
+    'uc santa cruz': 'ucsc.edu'                     
   };
 
-  // Check California domains first
-  for (const [name, domain] of Object.entries(californiaDomains)) {
-    if (lowerName.includes(name) || name.includes(lowerName)) {
-      fallbackDomains.unshift(domain); // Add to front of array
-      break;
-    }
+ // Check California domains first
+for (const [name, domain] of Object.entries(californiaDomains)) {
+  if (lowerName.includes(name) || name.includes(lowerName)) {
+    fallbackDomains.unshift(domain); // Add to front of array
+    break;
+  }
   }
 
   // Rest of existing UC and Cal State logic...
