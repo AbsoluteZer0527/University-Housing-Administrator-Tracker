@@ -186,6 +186,17 @@ function normalizeUniversityName(name: string): string {
   return name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 
+// NEW: Database-specific normalization (more aggressive than search normalization)
+function normalizeUniversityNameForDatabase(name: string): string {
+  return name.toLowerCase()
+    .replace(/[,\-\.]/g, '') // Remove commas, dashes, periods
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .replace(/\bthe\b/g, '') // Remove "the"
+    .replace(/\buniversity of\b/g, 'university of') // Normalize "university of"
+    .replace(/\bcalifornia institute of technology\b/g, 'california institute of technology')
+    .trim();
+}
+
 // NEW: Add global URL tracking
 class URLTracker {
   private scrapedUrls = new Set<string>();
@@ -1293,28 +1304,58 @@ async function checkForDuplicateAdministrators(universityId: string, admins: Hou
   return newAdmins;
 }
 
-// Enhanced University Management
 async function findExistingUniversity(universityName: string): Promise<University | null> {
   const nameVariations = generateUniversityVariations(universityName);
-  console.log(`🔍 Checking for existing university with variations:`, nameVariations);
+  
+  // NEW: Also add database-normalized versions
+  const normalizedVariations = [
+    ...nameVariations,
+    normalizeUniversityNameForDatabase(universityName),
+    ...nameVariations.map(v => normalizeUniversityNameForDatabase(v))
+  ];
+  
+  const uniqueVariations = Array.from(new Set(normalizedVariations));
+  console.log(`🔍 Checking for existing university with variations:`, uniqueVariations);
 
-  for (const variation of nameVariations) {
+  for (const variation of uniqueVariations) {
+    const { data: existing, error } = await supabase
+      .from("universities")
+      .select("*")
+      .eq("name", variation) // Use exact match since both are normalized
+      .limit(1);
+
+    if (!error && existing?.length > 0) {
+      console.log(`✅ Found normalized match: ${existing[0].name}`);
+      return existing[0];
+    }
+  }
+  
+  // Fallback: try partial match
+  for (const variation of uniqueVariations) {
     const { data: existing, error } = await supabase
       .from("universities")
       .select("*")
       .ilike("name", `%${variation}%`)
       .limit(1);
 
-    if (!error && existing?.length > 0) return existing[0];
+    if (!error && existing?.length > 0) {
+      console.log(`✅ Found partial match: ${existing[0].name}`);
+      return existing[0];
+    }
   }
+  
   return null;
 }
 
 async function createUniversity(universityName: string, domain: string | null, housingPages: string[] = []): Promise<University> {
   console.log(`➕ Creating new university: ${universityName}`);
   
+  // NEW: Normalize the university name before saving
+  const normalizedName = normalizeUniversityNameForDatabase(universityName);
+  console.log(`📝 Normalized name: "${universityName}" → "${normalizedName}"`);
+  
   const newUniversity = {
-    name: universityName,
+    name: normalizedName, // Use normalized name
     website: domain ? `https://${domain}` : null,
     housing_pages_discovered: housingPages
   };
@@ -1330,7 +1371,7 @@ async function createUniversity(universityName: string, domain: string | null, h
       console.log('📝 housing_pages_discovered column not found, creating without it');
       const { data: fallbackCreated, error: fallbackError } = await supabase
         .from("universities")
-        .insert({ name: universityName, website: domain ? `https://${domain}` : null })
+        .insert({ name: normalizedName, website: domain ? `https://${domain}` : null })
         .select()
         .single();
         
@@ -1345,8 +1386,8 @@ async function createUniversity(universityName: string, domain: string | null, h
 }
 
 // Main API Handler with Enhanced Error Handling
-// Main API Handler with Enhanced Error Handling
 export async function POST(req: Request) {
+
   const { universityName } = await req.json();
   
   if (!universityName) {
