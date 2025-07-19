@@ -186,11 +186,82 @@ function normalizeUniversityName(name: string): string {
   return name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 
+// NEW: Add global URL tracking
+class URLTracker {
+  private scrapedUrls = new Set<string>();
+  private discoveredEmails = new Set<string>();
+  
+  normalizeUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      return `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}`.toLowerCase();
+    } catch {
+      return url.toLowerCase();
+    }
+  }
+  
+  hasBeenScraped(url: string): boolean {
+    return this.scrapedUrls.has(this.normalizeUrl(url));
+  }
+  
+  markAsScraped(url: string): void {
+    this.scrapedUrls.add(this.normalizeUrl(url));
+  }
+  
+  hasEmail(email: string): boolean {
+    return this.discoveredEmails.has(email.toLowerCase());
+  }
+  
+  addEmail(email: string): void {
+    this.discoveredEmails.add(email.toLowerCase());
+  }
+}
+
 // Enhanced University Discovery
 function generateUniversityVariations(universityName: string): string[] {
-  const normalized = normalizeUniversityName(universityName);
+   const normalized = normalizeUniversityName(universityName);
   const variations = new Set([universityName, normalized]);
   
+  
+  // NEW: Add common university abbreviation expansions
+  const abbreviationExpansions: { [key: string]: string[] } = {
+    'ucr': ['University of California Riverside', 'University of California, Riverside', 'UC Riverside'],
+    'ucla': ['University of California Los Angeles', 'University of California, Los Angeles', 'UC Los Angeles'],
+    'ucsd': ['University of California San Diego', 'University of California, San Diego', 'UC San Diego'],
+    'uci': ['University of California Irvine', 'University of California, Irvine', 'UC Irvine'],
+    'ucsb': ['University of California Santa Barbara', 'University of California, Santa Barbara', 'UC Santa Barbara'],
+    'ucsc': ['University of California Santa Cruz', 'University of California, Santa Cruz', 'UC Santa Cruz'],
+    'ucd': ['University of California Davis', 'University of California, Davis', 'UC Davis'],
+    'ucb': ['University of California Berkeley', 'University of California, Berkeley', 'UC Berkeley'],
+    'berkeley': ['University of California Berkeley', 'University of California, Berkeley', 'UC Berkeley'],
+    'asu': ['Arizona State University'],
+    'uofa': ['University of Arizona'],
+    'ua': ['University of Arizona'],
+    'stanford': ['Stanford University'],
+    'mit': ['Massachusetts Institute of Technology'],
+    'cmu': ['Carnegie Mellon University'],
+    // Add more as needed
+  };
+
+  const lowerInput = universityName.toLowerCase();
+  
+  // Check if input matches any abbreviation
+  if (abbreviationExpansions[lowerInput]) {
+    abbreviationExpansions[lowerInput].forEach(expansion => {
+      variations.add(expansion);
+      variations.add(normalizeUniversityName(expansion));
+    });
+  }
+
+  // NEW: Reverse lookup - if input is full name, add abbreviations
+  for (const [abbrev, expansions] of Object.entries(abbreviationExpansions)) {
+    if (expansions.some(exp => lowerInput.includes(exp.toLowerCase()) || exp.toLowerCase().includes(lowerInput))) {
+      variations.add(abbrev.toUpperCase());
+      variations.add(abbrev.toLowerCase());
+    }
+  }
+
+  // Existing abbreviation logic...
   const abbreviations: { [key: string]: string[] } = {
     'university of california': ['uc', 'university of california'],
     'california state university': ['csu', 'cal state'],
@@ -206,6 +277,7 @@ function generateUniversityVariations(universityName: string): string[] {
     }
   }
 
+  // Rest of existing logic...
   const commonWords = ['the', 'of', 'at', 'in', 'and', '&'];
   const wordsRemoved = normalized.split(' ').filter(word => !commonWords.includes(word)).join(' ');
   if (wordsRemoved !== normalized) variations.add(wordsRemoved);
@@ -216,6 +288,7 @@ function generateUniversityVariations(universityName: string): string[] {
     if (acronym.length >= 2) variations.add(acronym);
   }
 
+  console.log(`🔍 Generated variations for "${universityName}":`, Array.from(variations));
   return Array.from(variations);
 }
 
@@ -652,31 +725,52 @@ function extractStructuredData($: cheerio.CheerioAPI, universityName: string, ur
 }
 
 // Enhanced Main Scraping Function
-async function scrapeHousingAdmins(universityName: string, url: string): Promise<HousingAdmin[]> {
+async function scrapeHousingAdmins(universityName: string, url: string, tracker: URLTracker): Promise<HousingAdmin[]> {
   console.log(`🔍 Scraping housing admins from: ${url}`);
+  
+  // CHECK: Skip if already scraped
+  if (tracker.hasBeenScraped(url)) {
+    console.log(`⏭️ Skipping already scraped URL: ${url}`);
+    return [];
+  }
+  
   const admins: HousingAdmin[] = [];
 
   try {
     const res = await axios.get(url, axiosConfig);
     const $ = cheerio.load(res.data);
 
+    // MARK: Mark as scraped early
+    tracker.markAsScraped(url);
+
     // First extract structured data
     extractStructuredData($, universityName, url, admins);
 
-    // Enhanced contact page discovery
-    const contactLinks = await discoverContactPages($, url);
+    // Enhanced contact page discovery with tracker
+    const contactLinks = await discoverContactPages($, url, tracker);
     console.log(`📞 Found ${contactLinks.length} contact pages to explore`);
 
-    // Scrape main page and contact pages
-    const urlsToScrape = [url, ...contactLinks.slice(0, 8)]; // Increased limit
+    // LIMIT: Reduce from 8 to 5 contact pages
+    const urlsToScrape = [url, ...contactLinks.slice(0, 5)];
     
     for (const scrapeUrl of urlsToScrape) {
+      // SKIP: If already scraped
+      if (scrapeUrl !== url && tracker.hasBeenScraped(scrapeUrl)) {
+        console.log(`⏭️ Skipping already scraped contact page: ${scrapeUrl}`);
+        continue;
+      }
+      
       try {
         const pageRes = scrapeUrl === url ? res : await axios.get(scrapeUrl, axiosConfig);
         const $page = cheerio.load(pageRes.data);
         
         // Enhanced staff section detection
-        await scrapePageForStaff($page, universityName, scrapeUrl, admins);
+        await scrapePageForStaff($page, universityName, scrapeUrl, admins, tracker);
+        
+        // MARK: Mark contact page as scraped
+        if (scrapeUrl !== url) {
+          tracker.markAsScraped(scrapeUrl);
+        }
 
         if (scrapeUrl !== url) await new Promise(resolve => setTimeout(resolve, 800));
       } catch (err) {
@@ -691,16 +785,18 @@ async function scrapeHousingAdmins(universityName: string, url: string): Promise
   }
 }
 
-async function discoverContactPages($: cheerio.CheerioAPI, baseUrl: string): Promise<string[]> {
+async function discoverContactPages($: cheerio.CheerioAPI, baseUrl: string, tracker: URLTracker): Promise<string[]> {
   const contactLinks: string[] = [];
   const enhancedContactKeywords = [
     ...CONTACT_KEYWORDS,
     'staff directory', 'faculty staff', 'personnel', 'leadership',
     'management', 'administration', 'team members', 'our staff',
-    ...LOCATION_KEYWORDS // Include location-based keywords
+    ...LOCATION_KEYWORDS
   ];
 
   $("a[href]").each((_, el) => {
+    if (contactLinks.length >= 8) return false; // LIMIT: Stop at 8 links
+    
     const href = $(el).attr("href");
     const text = $(el).text().toLowerCase().trim();
     const title = $(el).attr("title")?.toLowerCase() || "";
@@ -711,14 +807,11 @@ async function discoverContactPages($: cheerio.CheerioAPI, baseUrl: string): Pro
       text.includes(keyword) || title.includes(keyword) || href.toLowerCase().includes(keyword)
     );
 
-    // Enhanced: Also check for location-specific links that might contain staff
     const isLocationLink = LOCATION_KEYWORDS.some(keyword => 
       text.includes(keyword) || title.includes(keyword)
     ) || 
-    // Pattern matching for specific locations
     /\b(north|south|east|west|tower|hall|court|village|plaza|house)\b/i.test(text) ||
     /\b(building|complex|residence|dorm|suite)\b/i.test(text) ||
-    // Specific naming patterns like "Hedrick Hall" or "University Apartments"
     /\b[A-Z][a-z]+ (hall|house|court|tower|apartments?)\b/i.test(text);
 
     if (isContactLink || isLocationLink) {
@@ -727,7 +820,10 @@ async function discoverContactPages($: cheerio.CheerioAPI, baseUrl: string): Pro
         const baseHost = new URL(baseUrl).hostname;
         const linkHost = new URL(fullUrl).hostname;
         
-        if (linkHost === baseHost && !contactLinks.includes(fullUrl)) {
+        // CHECK: Skip if already discovered or scraped
+        if (linkHost === baseHost && 
+            !tracker.hasBeenScraped(fullUrl) && 
+            !contactLinks.includes(fullUrl)) {
           contactLinks.push(fullUrl);
           const linkType = isLocationLink ? "location" : "contact";
           console.log(`   📞 Found ${linkType} link: ${text} → ${fullUrl}`);
@@ -741,7 +837,7 @@ async function discoverContactPages($: cheerio.CheerioAPI, baseUrl: string): Pro
   return contactLinks;
 }
 
-async function scrapePageForStaff($: cheerio.CheerioAPI, universityName: string, url: string, admins: HousingAdmin[]): Promise<void> {
+async function scrapePageForStaff($: cheerio.CheerioAPI, universityName: string, url: string, admins: HousingAdmin[], tracker: URLTracker): Promise<void> {
   // Enhanced staff section detection using research-based selectors
   const staffSections = $([
     ...STAFF_SECTION_SELECTORS,
@@ -778,10 +874,16 @@ async function scrapePageForStaff($: cheerio.CheerioAPI, universityName: string,
     }
 
     emails.forEach(email => {
+      if (tracker.hasEmail(email)) {
+      console.log(`⏭️ Skipping duplicate email: ${email}`);
+      return;
+      }
       const { name, title, isContactForm } = extractContactInfo($section, email);
 
+        
       if (email && (name || isContactForm)) {
         // Enhanced: Extract location context from URL for better categorization
+        tracker.addEmail(email);
         const locationContext = extractLocationContext(url);
         const enhancedTitle = locationContext && title ? 
           `${title} - ${locationContext}` : 
@@ -1162,6 +1264,7 @@ async function createUniversity(universityName: string, domain: string | null, h
 }
 
 // Main API Handler with Enhanced Error Handling
+// Main API Handler with Enhanced Error Handling
 export async function POST(req: Request) {
   const { universityName } = await req.json();
   
@@ -1173,6 +1276,8 @@ export async function POST(req: Request) {
   }
 
   console.log(`🎯 Starting enhanced scrape for: ${universityName}`);
+
+  const tracker = new URLTracker();
 
   try {
     // Check if university exists
@@ -1213,78 +1318,80 @@ export async function POST(req: Request) {
     const scrapingResults: { url: string; success: boolean; count: number; error?: string }[] = [];
     const startTime = Date.now();
     let timedOut = false;
-    for (const {} of housingPages) {
-      const scrapingPromise = (async () => {
-        for (const url of housingPages) {
-    // Check timeout before each page
-    if (Date.now() - startTime > SCRAPING_TIMEOUT_MS) {
-      console.log(`⏰ Scraping timeout reached after ${Math.round((Date.now() - startTime) / 1000)}s`);
-      timedOut = true;
-      break;
-    }
 
-    try {
-      // Create a timeout promise for this specific page
-      const pageTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Page timeout')), BATCH_TIMEOUT_MS);
-      });
-
-      const scrapingPromise = scrapeHousingAdmins(universityName, url);
-      const admins = await Promise.race([scrapingPromise, pageTimeout]);
-      
-      allAdmins.push(...admins);
-      scrapingResults.push({ url, success: true, count: admins.length });
-      console.log(`✅ Scraped ${admins.length} admins from ${url}`);
-      
-      // Enhanced: If this is a main housing page, also try to discover community/location pages
-      if (url.includes('/housing') || url.includes('/residential') || url.includes('/reslife')) {
-        const additionalPages = await discoverCommunityPages(url);
-        console.log(`🔍 Found ${additionalPages.length} additional community pages from ${url}`);
-        
-        // Scrape additional community pages with timeout checks
-        for (const additionalUrl of additionalPages.slice(0, 5)) {
-          if (Date.now() - startTime > SCRAPING_TIMEOUT_MS) {
-            console.log(`⏰ Timeout reached while processing additional pages`);
-            timedOut = true;
-            break;
-          }
-
-          try {
-            const additionalPromise = scrapeHousingAdmins(universityName, additionalUrl);
-            const additionalAdmins = await Promise.race([additionalPromise, pageTimeout]);
-            allAdmins.push(...additionalAdmins);
-            scrapingResults.push({ url: additionalUrl, success: true, count: additionalAdmins.length });
-            console.log(`✅ Scraped ${additionalAdmins.length} additional admins from ${additionalUrl}`);
-          } catch (err: unknown) {
-            const errorMsg = err instanceof Error && err.message === 'Page timeout' 
-              ? 'Page timeout (2min)' 
-              : (err instanceof Error ? err.message : 'Unknown error');
-            scrapingResults.push({ url: additionalUrl, success: false, count: 0, error: errorMsg });
-            console.warn(`⚠️ Failed to scrape additional page ${additionalUrl}: ${errorMsg}`);
-          }
-        }
-        
-        if (timedOut) break;
+    // Process each housing page
+    for (const url of housingPages) {
+      // Check timeout before each page
+      if (Date.now() - startTime > SCRAPING_TIMEOUT_MS) {
+        console.log(`⏰ Scraping timeout reached after ${Math.round((Date.now() - startTime) / 1000)}s`);
+        timedOut = true;
+        break;
       }
-    } catch (err: unknown) {
+
+      try {
+        // Create a timeout promise for this specific page
+        const pageTimeout = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Page timeout')), BATCH_TIMEOUT_MS);
+        });
+
+        const scrapingPromise = scrapeHousingAdmins(universityName, url, tracker);
+        const admins = await Promise.race([scrapingPromise, pageTimeout]);
+        
+        allAdmins.push(...admins);
+        scrapingResults.push({ url, success: true, count: admins.length });
+        console.log(`✅ Scraped ${admins.length} admins from ${url}`);
+        
+        // Enhanced: If this is a main housing page, also try to discover community/location pages
+        if (url.includes('/housing') || url.includes('/residential') || url.includes('/reslife')) {
+          const additionalPages = await discoverCommunityPages(url, tracker);
+          console.log(`🔍 Found ${additionalPages.length} additional community pages from ${url}`);
+          
+          // Scrape additional community pages with timeout checks
+          for (const additionalUrl of additionalPages.slice(0, 3)) {
+            if (Date.now() - startTime > SCRAPING_TIMEOUT_MS) {
+              console.log(`⏰ Timeout reached while processing additional pages`);
+              timedOut = true;
+              break;
+            }
+
+            try {
+              const additionalPromise = scrapeHousingAdmins(universityName, additionalUrl, tracker);
+              const additionalAdmins = await Promise.race([additionalPromise, pageTimeout]);
+              allAdmins.push(...additionalAdmins);
+              scrapingResults.push({ url: additionalUrl, success: true, count: additionalAdmins.length });
+              console.log(`✅ Scraped ${additionalAdmins.length} additional admins from ${additionalUrl}`);
+            } catch (err: unknown) {
+              const errorMsg = err instanceof Error && err.message === 'Page timeout' 
+                ? 'Page timeout (2min)' 
+                : (err instanceof Error ? err.message : 'Unknown error');
+              scrapingResults.push({ url: additionalUrl, success: false, count: 0, error: errorMsg });
+              console.warn(`⚠️ Failed to scrape additional page ${additionalUrl}: ${errorMsg}`);
+            }
+          }
+          
+          if (timedOut) break;
+        }
+      } catch (err: unknown) {
         const errorMsg = err instanceof Error && err.message === 'Page timeout' 
           ? 'Page timeout (2min)' 
           : (err instanceof Error ? err.message : 'Unknown error');
         scrapingResults.push({ url, success: false, count: 0, error: errorMsg });
         console.warn(`⚠️ Failed to scrape ${url}: ${errorMsg}`);
+      }
     }
-  }
-})();
-
-    // Wait for scraping to complete or timeout
-    await scrapingPromise;
 
     console.log(`⏰ Scraping completed in ${Math.round((Date.now() - startTime) / 1000)}s${timedOut ? ' (TIMED OUT)' : ''}`);
-    }
 
+    // Rest of your existing code for processing and saving administrators...
 // NEW: Discover community/location pages from main housing pages
-async function discoverCommunityPages(mainUrl: string): Promise<string[]> {
+async function discoverCommunityPages(mainUrl: string, tracker: URLTracker): Promise<string[]> {
   console.log(`🏘️ Discovering community pages from: ${mainUrl}`);
+
+  if (tracker.hasBeenScraped(mainUrl)) {
+    console.log(`⏭️ Skipping community discovery for already scraped URL: ${mainUrl}`);
+    return [];
+  }
+
   const communityPages: string[] = [];
   
   try {
@@ -1293,6 +1400,8 @@ async function discoverCommunityPages(mainUrl: string): Promise<string[]> {
     
     // Look for links that indicate specific communities/locations
     $("a[href]").each((_, el) => {
+      if (communityPages.length >= 10) return false;
+
       const href = $(el).attr("href");
       const text = $(el).text().toLowerCase().trim();
       const title = $(el).attr("title")?.toLowerCase() || "";
@@ -1321,7 +1430,9 @@ async function discoverCommunityPages(mainUrl: string): Promise<string[]> {
           const baseHost = new URL(mainUrl).hostname;
           const linkHost = new URL(fullUrl).hostname;
           
-          if (linkHost === baseHost && !communityPages.includes(fullUrl)) {
+          if (linkHost === baseHost && 
+              !tracker.hasBeenScraped(fullUrl) && 
+              !communityPages.includes(fullUrl)) {
             communityPages.push(fullUrl);
             console.log(`   🏘️ Found community page: ${text.trim()} → ${fullUrl}`);
           }

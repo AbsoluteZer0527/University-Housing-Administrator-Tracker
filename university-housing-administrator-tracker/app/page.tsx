@@ -53,7 +53,7 @@ export default function Home() {
           Search for university housing administrators, track outreach, and manage communication status. 
         </p>
         <p className="text-gray-600 max-w-md mb-6">
-          Note: The scraper will run at most 10 minutes, just wait until you get some result.
+          Note: If the university is not found in the database, it will run the scraper and return at most 10 minutes, please be patient and wait until you get some result.
         </p>
         
         <UniversitySearchForm />
