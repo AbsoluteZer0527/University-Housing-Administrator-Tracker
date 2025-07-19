@@ -217,51 +217,96 @@ class URLTracker {
   }
 }
 
-// Enhanced University Discovery
 function generateUniversityVariations(universityName: string): string[] {
-   const normalized = normalizeUniversityName(universityName);
+  const normalized = normalizeUniversityName(universityName);
   const variations = new Set([universityName, normalized]);
   
-  
-  // NEW: Add common university abbreviation expansions
-  const abbreviationExpansions: { [key: string]: string[] } = {
-    'ucr': ['University of California Riverside', 'University of California, Riverside', 'UC Riverside'],
-    'ucla': ['University of California Los Angeles', 'University of California, Los Angeles', 'UC Los Angeles'],
-    'ucsd': ['University of California San Diego', 'University of California, San Diego', 'UC San Diego'],
-    'uci': ['University of California Irvine', 'University of California, Irvine', 'UC Irvine'],
-    'ucsb': ['University of California Santa Barbara', 'University of California, Santa Barbara', 'UC Santa Barbara'],
-    'ucsc': ['University of California Santa Cruz', 'University of California, Santa Cruz', 'UC Santa Cruz'],
-    'ucd': ['University of California Davis', 'University of California, Davis', 'UC Davis'],
-    'ucb': ['University of California Berkeley', 'University of California, Berkeley', 'UC Berkeley'],
-    'berkeley': ['University of California Berkeley', 'University of California, Berkeley', 'UC Berkeley'],
-    'asu': ['Arizona State University'],
-    'uofa': ['University of Arizona'],
-    'ua': ['University of Arizona'],
-    'stanford': ['Stanford University'],
-    'mit': ['Massachusetts Institute of Technology'],
-    'cmu': ['Carnegie Mellon University'],
-    // Add more as needed
+  // NEW: California universities only
+  const californiaUniversities: { [key: string]: string[] } = {
+    // Major California Tech Schools
+    'california institute of technology': ['caltech', 'cit'],
+    'caltech': ['california institute of technology', 'cit'],
+    
+    // Stanford
+    'stanford university': ['stanford'],
+    'stanford': ['stanford university'],
+    
+    // USC
+    'university of southern california': ['usc'],
+    'usc': ['university of southern california'],
+    
+    // Claremont Colleges
+    'harvey mudd college': ['harvey mudd', 'hmc'],
+    'pomona college': ['pomona'],
+    'claremont mckenna college': ['claremont mckenna', 'cmc'],
+    'scripps college': ['scripps'],
+    'pitzer college': ['pitzer'],
+    
+    // UC System
+    'university of california berkeley': ['uc berkeley', 'ucb', 'berkeley', 'cal'],
+    'university of california los angeles': ['ucla', 'uc los angeles'],
+    'university of california san diego': ['ucsd', 'uc san diego'],
+    'university of california irvine': ['uci', 'uc irvine'],
+    'university of california davis': ['ucd', 'uc davis'],
+    'university of california santa barbara': ['ucsb', 'uc santa barbara'],
+    'university of california riverside': ['ucr', 'uc riverside'],
+    'university of california santa cruz': ['ucsc', 'uc santa cruz'],
+    'university of california merced': ['ucm', 'uc merced'],
+    'university of california san francisco': ['ucsf', 'uc san francisco'],
+    
+    // Cal State System  
+    'california state university long beach': ['cal state long beach', 'csulb'],
+    'california state university los angeles': ['cal state la', 'csula'],
+    'california state university fullerton': ['cal state fullerton', 'csuf'],
+    'california state university northridge': ['cal state northridge', 'csun'],
+    'california state university san diego': ['sdsu', 'san diego state'],
+    'san diego state university': ['sdsu', 'cal state san diego'],
+    'california state university fresno': ['fresno state', 'csuf'],
+    'california state university sacramento': ['sac state', 'csus'],
+    'california state university san francisco': ['sf state', 'sfsu'],
+    'san francisco state university': ['sf state', 'sfsu'],
+    
+    // Other California Schools
+    'california polytechnic state university': ['cal poly', 'calpoly'],
+    'cal poly': ['california polytechnic state university', 'calpoly'],
+    'california polytechnic pomona': ['cal poly pomona', 'cpp'],
+    'university of california hastings': ['uc hastings'],
+    'loyola marymount university': ['lmu'],
+    'pepperdine university': ['pepperdine'],
+    'santa clara university': ['santa clara', 'scu'],
+    'university of san francisco': ['usf'],
+    'san jose state university': ['sjsu', 'san jose state'],
+    'humboldt state university': ['humboldt state', 'hsu'],
   };
 
   const lowerInput = universityName.toLowerCase();
   
-  // Check if input matches any abbreviation
-  if (abbreviationExpansions[lowerInput]) {
-    abbreviationExpansions[lowerInput].forEach(expansion => {
-      variations.add(expansion);
-      variations.add(normalizeUniversityName(expansion));
-    });
-  }
-
-  // NEW: Reverse lookup - if input is full name, add abbreviations
-  for (const [abbrev, expansions] of Object.entries(abbreviationExpansions)) {
-    if (expansions.some(exp => lowerInput.includes(exp.toLowerCase()) || exp.toLowerCase().includes(lowerInput))) {
-      variations.add(abbrev.toUpperCase());
-      variations.add(abbrev.toLowerCase());
+  // Check if input matches any California university
+  for (const [fullName, abbreviations] of Object.entries(californiaUniversities)) {
+    if (lowerInput.includes(fullName) || fullName.includes(lowerInput)) {
+      abbreviations.forEach(abbrev => {
+        variations.add(abbrev);
+        variations.add(abbrev.toUpperCase());
+      });
+      variations.add(fullName);
+      break;
+    }
+    
+    // Check if input matches any abbreviation
+    if (abbreviations.some(abbrev => 
+        lowerInput === abbrev.toLowerCase() || 
+        lowerInput.includes(abbrev.toLowerCase())
+    )) {
+      variations.add(fullName);
+      abbreviations.forEach(abbrev => {
+        variations.add(abbrev);
+        variations.add(abbrev.toUpperCase());
+      });
+      break;
     }
   }
 
-  // Existing abbreviation logic...
+  // Rest of existing logic for general patterns...
   const abbreviations: { [key: string]: string[] } = {
     'university of california': ['uc', 'university of california'],
     'california state university': ['csu', 'cal state'],
@@ -333,14 +378,51 @@ function extractDomainFromUrl(url: string): string | null {
   }
 }
 
-// Enhanced Fallback Strategies
 async function tryFallbackDomainStrategies(universityName: string): Promise<string | null> {
   console.log("🔄 Trying fallback domain strategies...");
   
   const lowerName = universityName.toLowerCase();
   const fallbackDomains: string[] = [];
   
-  // Enhanced UC system patterns
+  // NEW: California-only known domains
+  const californiaDomains: { [key: string]: string } = {
+    'california institute of technology': 'caltech.edu',
+    'caltech': 'caltech.edu',
+    'stanford university': 'stanford.edu',
+    'stanford': 'stanford.edu',
+    'university of southern california': 'usc.edu',
+    'usc': 'usc.edu',
+    'harvey mudd college': 'hmc.edu',
+    'harvey mudd': 'hmc.edu',
+    'pomona college': 'pomona.edu',
+    'pomona': 'pomona.edu',
+    'claremont mckenna college': 'cmc.edu',
+    'claremont mckenna': 'cmc.edu',
+    'scripps college': 'scrippscollege.edu',
+    'pitzer college': 'pitzer.edu',
+    'california polytechnic state university': 'calpoly.edu',
+    'cal poly': 'calpoly.edu',
+    'california polytechnic pomona': 'cpp.edu',
+    'cal poly pomona': 'cpp.edu',
+    'loyola marymount university': 'lmu.edu',
+    'pepperdine university': 'pepperdine.edu',
+    'santa clara university': 'scu.edu',
+    'university of san francisco': 'usfca.edu',
+    'san jose state university': 'sjsu.edu',
+    'san diego state university': 'sdsu.edu',
+    'san francisco state university': 'sfsu.edu',
+    'humboldt state university': 'humboldt.edu',
+  };
+
+  // Check California domains first
+  for (const [name, domain] of Object.entries(californiaDomains)) {
+    if (lowerName.includes(name) || name.includes(lowerName)) {
+      fallbackDomains.unshift(domain); // Add to front of array
+      break;
+    }
+  }
+
+  // Rest of existing UC and Cal State logic...
   if (lowerName.includes('university of california')) {
     const cityMatch = lowerName.match(/university of california[,\s]+(.+)/);
     if (cityMatch) {
@@ -351,7 +433,7 @@ async function tryFallbackDomainStrategies(universityName: string): Promise<stri
         'berkeley': 'berkeley.edu', 'davis': 'ucdavis.edu',
         'irvine': 'uci.edu', 'santa barbara': 'ucsb.edu',
         'santa cruz': 'ucsc.edu', 'riverside': 'ucr.edu',
-        'merced': 'ucmerced.edu'
+        'merced': 'ucmerced.edu', 'san francisco': 'ucsf.edu'
       };
       
       if (ucDomains[city]) fallbackDomains.push(ucDomains[city]);
@@ -359,7 +441,6 @@ async function tryFallbackDomainStrategies(universityName: string): Promise<stri
     }
   }
   
-  // Enhanced Cal State and general patterns
   if (lowerName.includes('california state university') || lowerName.includes('cal state')) {
     const cityMatch = lowerName.match(/(?:california state university|cal state)[,\s]+(.+)/);
     if (cityMatch) {
@@ -368,8 +449,9 @@ async function tryFallbackDomainStrategies(universityName: string): Promise<stri
     }
   }
 
+  // Rest of existing logic...
   const nameWords = lowerName.replace(/[^a-z\s]/g, '').split(/\s+/)
-    .filter(word => !['university', 'of', 'the', 'at', 'state', 'college', 'california'].includes(word));
+    .filter(word => !['university', 'of', 'the', 'at', 'state', 'college', 'california', 'institute', 'technology'].includes(word));
 
   if (fallbackDomains.length === 0) {
     fallbackDomains.push(
@@ -401,7 +483,6 @@ async function tryFallbackDomainStrategies(universityName: string): Promise<stri
 
   return null;
 }
-
 // Enhanced Housing Page Discovery
 async function searchHousingPages(universityName: string): Promise<string[]> {
   console.log(`🏠 Searching for housing pages: ${universityName}`);
