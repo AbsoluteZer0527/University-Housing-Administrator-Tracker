@@ -2,6 +2,8 @@
 
 __Deployed On Vercel: https://university-housing-administrator-tr.vercel.app/__
 
+![alt text](image.png)
+
 This is a Next.js program that automatically discovers and tracks contact information for housing administrators at California universities, this is considered my personal project for Unishack. The script uses cheerio + axios web scraping to find staff directories, contact pages, and housing department information, then organizes the data for easy management and outreach.
 
 ## Technology/framework used: 
