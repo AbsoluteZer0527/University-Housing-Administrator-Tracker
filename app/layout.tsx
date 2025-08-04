@@ -10,9 +10,25 @@ const defaultUrl = process.env.VERCEL_URL
   : "http://localhost:3000";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: 'University Housing Administrator Tracker',
+  description: 'Search for university housing administrators, track outreach, and manage communication status.',
+  keywords: ['university', 'housing', 'administrators', 'contact', 'search'],
+  authors: [{ name: 'Luyuan Zhu' }],
+  openGraph: {
+    title: 'University Housing Administrator Tracker',
+    description: 'Search for university housing administrators, track outreach, and manage communication status.',
+    url: 'https://university-housing-administrator-tr.vercel.app',
+    siteName: 'University Housing Administrator Search',
+    images: [
+      {
+        url: 'https://university-housing-administrator-tr.vercel.app/og-image.png',
+        height: 630,
+        alt: 'University Housing Administrator Search',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
