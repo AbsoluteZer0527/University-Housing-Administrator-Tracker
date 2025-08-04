@@ -56,19 +56,21 @@ export default function Home() {
           Note: If the university is not found in the database, it will run the scraper and return at most 10 minutes, please be patient and wait until you get some result.
         </p>
         
-        <UniversitySearchForm />
-        
-        {/* Only show CategoryAdministratorsList if user is logged in */}
-        {user && <CategoryAdministratorsList />}
         
         {/* Optional: Show login prompt if not authenticated */}
         {!user && (
           <div className="mt-8 p-4 bg-gray-50 rounded-lg">
             <p className="text-gray-600">
-              Please log in to view and manage administrators.
+              Please log in to search, view, and manage administrators.
             </p>
           </div>
         )}
+
+        <UniversitySearchForm user = {user}/>
+        
+
+        {/* Only show CategoryAdministratorsList if user is logged in */}
+        {user && <CategoryAdministratorsList />}
       </div>
     </main>
   );

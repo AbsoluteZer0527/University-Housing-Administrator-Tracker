@@ -15,8 +15,11 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 const RECENT_KEY = "recentUniversitySearches";
+interface UniversitySearchFormProps {
+  user?: any;
+}
 
-export function UniversitySearchForm() {
+export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
   const [universityName, setUniversityName] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,9 +142,9 @@ export function UniversitySearchForm() {
             placeholder="Enter university name..."
             value={universityName}
             onChange={(e) => setUniversityName(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoading || !user}
           />
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading || !user}>
             {isLoading ? "Searching..." : "Search"}
           </Button>
         </form>
