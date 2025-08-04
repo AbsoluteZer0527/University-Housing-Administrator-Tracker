@@ -23,4 +23,4 @@ This is a Next.js program that automatically discovers and tracks contact inform
 - Fixed dark mode UI problems, right now the texts should be readable.
 - disabled searched and refined direction texts for the non-logged-in page. 
 - Fixed email confirmation link invalid issue, it should now redirect to the login page.
--New Feature: Edit admin cards: Since people mentioned that some data is displayed in confusing ways, and it is impossible for the scraper to always be precise, nor did I want to clean up the data manually, now you can edit each admin card and save it to the database! 
+- New Feature: Edit admin cards: Since people mentioned that some data is displayed in confusing ways, and it is impossible for the scraper to always be precise, nor did I want to clean up the data manually, now you can edit each admin card and save it to the database! 
