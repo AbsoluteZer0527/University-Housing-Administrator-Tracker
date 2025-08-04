@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { CsvExportButton } from "@/components/csv-export-button";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -111,6 +112,15 @@ export default async function UniversityPage({ params }: Props) {
   </CardContent>
 </Card>
       
+       {/* csv button  */}
+      <div className="flex justify-end">
+        <CsvExportButton 
+          administrators={administrators ?? []}
+          universityName={university.name}
+        />
+      </div>
+      
+       {/* admin list */}
       <AdministratorList
         administrators={administrators ?? []}
         universityId={universityId}

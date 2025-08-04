@@ -13,10 +13,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { User } from '@supabase/supabase-js';
 
 const RECENT_KEY = "recentUniversitySearches";
 interface UniversitySearchFormProps {
-  user?: any;
+  user?: User | null;
 }
 
 export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
