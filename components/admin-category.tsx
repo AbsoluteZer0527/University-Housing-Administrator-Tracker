@@ -156,7 +156,7 @@ export function CategoryAdministratorsList() {
         {categories.map(({ key, label, color }) => (
           <Card
             key={key}
-            className="w-full rounded-2xl shadow-sm bg-white border border-muted"
+            className="w-full rounded-2xl shadow-sm bg-muted border border-muted"
             id={`${key}Category`}
             data-category={key}
           >

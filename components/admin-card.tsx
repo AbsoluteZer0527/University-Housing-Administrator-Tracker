@@ -100,7 +100,7 @@ export function AdministratorCard({
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CardContent className="pt-2 pb-0">
           <CollapsibleTrigger asChild>
-            <Button variant="ghost"  className="w-full flex justify-between items-center bg-slate-100" >
+            <Button variant="ghost"  className="w-full flex justify-between items-center bg-muted" >
               <span>View Details</span>
               {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>

@@ -92,7 +92,7 @@ export function CsvExportButton({
       onClick={exportToCsv}
       variant="outline"
       size="sm"
-      className={className}
+      className="bg-muted"
       disabled={!administrators || administrators.length === 0}
     >
       <Download className="mr-2 h-4 w-4" />

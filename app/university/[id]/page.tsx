@@ -113,7 +113,7 @@ export default async function UniversityPage({ params }: Props) {
 </Card>
       
        {/* csv button  */}
-      <div className="flex justify-end">
+      <div className="flex justify-end ">
         <CsvExportButton 
           administrators={administrators ?? []}
           universityName={university.name}
