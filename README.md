@@ -18,7 +18,8 @@ This is a Next.js program that automatically discovers and tracks contact inform
 - Vercel (Deployment platform)
 - Sonner (Toast notifications)
 
-V1.1 Update: 
+##Updates:
+###V1.1 Update 8/4/2025: 
 - Fixed dark mode UI problems, right now the texts should be readable.
 - disabled searched and refined direction texts for the non-logged-in page. 
 - Fixed email confirmation link invalid issue, it should now redirect to the login page.
