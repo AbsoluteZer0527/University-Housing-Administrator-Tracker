@@ -27,6 +27,16 @@ export function SignUpForm({
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  const getRedirectUrl = () => {
+    // Use the production URL if available, otherwise fall back to current origin
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://university-housing-administrator-tr.vercel.app'
+      : window.location.origin;
+    
+    return `${baseUrl}/auth/login`;
+  };
+
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     const supabase = createClient();
@@ -44,7 +54,7 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: getRedirectUrl(),
         },
       });
       if (error) throw error;

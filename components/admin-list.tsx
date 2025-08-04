@@ -38,6 +38,17 @@ export function AdministratorList({ administrators }: AdministratorListProps) {
     );
   };
 
+  const handleDataChange = (adminId: string, updatedData: Partial<Administrator>) => {
+  // Update your local state if needed
+  setAllAdmins(prev => 
+    prev.map(admin => 
+      admin.id === adminId 
+        ? { ...admin, ...updatedData }
+        : admin
+    )
+  );
+};
+
   const handleBulkStatusUpdate = async () => {
     setIsUpdating(true);
     
@@ -166,6 +177,7 @@ export function AdministratorList({ administrators }: AdministratorListProps) {
               universityId={admin.university_id}
               administrator={admin}
               onStatusChange={handleStatusChange}
+              onDataChange={handleDataChange}
             />
           ))
         )}

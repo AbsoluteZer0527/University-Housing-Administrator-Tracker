@@ -100,6 +100,27 @@ export function CategoryAdministratorsList() {
     fetchData();
   }, []);
 
+  const handleDataChange = (adminId: string, updatedData: Partial<Administrator>) => {
+    setCategorizedAdmins(prev => {
+      const updated = { ...prev };
+      
+      // Find and update the admin in the correct category
+      for (const [status, admins] of Object.entries(updated)) {
+        const adminIndex = admins.findIndex(admin => admin.id === adminId);
+        if (adminIndex !== -1) {
+          updated[status as AdminStatus] = [
+            ...admins.slice(0, adminIndex),
+            { ...admins[adminIndex], ...updatedData },
+            ...admins.slice(adminIndex + 1)
+          ];
+          break;
+        }
+      }
+      
+      return updated;
+    });
+  }
+
   const handleStatusChange = (
     adminId: string,
     //universityId: string,
@@ -126,7 +147,6 @@ export function CategoryAdministratorsList() {
       updated[newStatus].push({ ...admin, status: newStatus });
       return updated;
     });
-
     // Optional: persist status update to Supabase
     const supabase = createClient();
     supabase
@@ -179,8 +199,9 @@ export function CategoryAdministratorsList() {
                         administrator={admin}
                         universityId={admin.university_id}
                         onStatusChange={(id, status) =>
-                          handleStatusChange(id, status)
+                          handleStatusChange(id, status) 
                         }
+                        onDataChange={handleDataChange}
                       />
                       <p className="text-xs text-muted-foreground text-right mt-1">
                         {admin.universityName}

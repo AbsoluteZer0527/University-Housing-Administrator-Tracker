@@ -13,11 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
-import { User } from '@supabase/supabase-js';
 
 const RECENT_KEY = "recentUniversitySearches";
+
 interface UniversitySearchFormProps {
-  user?: User | null;
+  user?: {
+    id: string;
+    email?: string;
+  } | null;
 }
 
 export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
@@ -45,6 +48,12 @@ export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Check if user is logged in
+    if (!user) {
+      toast.error("Please log in to search for universities");
+      return;
+    }
+
     const trimmed = universityName.trim();
     if (!trimmed) {
       toast.error("Please enter a university name");
@@ -70,14 +79,12 @@ export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
 
     // Step 2: If found, redirect immediately
     if (universities && universities.length > 0) {
+      toast.success(`Successfully found University in the database!`);
       addToRecentSearches(trimmed);
       router.push(`/university/${universities[0].id}`);
       setIsLoading(false);
       return;
     }
-
-    // Step 3: If not found, trigger scraper
-    toast.info("University not found, attempting to scrape...");
 
     try {
       const scrapeRes = await fetch("/api/scrape", {
@@ -145,12 +152,16 @@ export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
             onChange={(e) => setUniversityName(e.target.value)}
             disabled={isLoading || !user}
           />
-          <Button type="submit" className="w-full" disabled={isLoading || !user}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={isLoading || !user}
+          >
             {isLoading ? "Searching..." : "Search"}
           </Button>
         </form>
 
-        {recentSearches.length > 0 && (
+        {user && recentSearches.length > 0 && (
           <div className="mt-6">
             <h3 className="text-sm font-medium text-muted-foreground mb-2">Recent searches</h3>
             <div className="flex flex-wrap gap-2">
@@ -160,6 +171,7 @@ export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setUniversityName(name)}
+                  disabled={!user}
                 >
                   {name}
                 </Button>

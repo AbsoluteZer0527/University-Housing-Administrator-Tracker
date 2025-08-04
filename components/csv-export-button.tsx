@@ -24,8 +24,7 @@ interface CsvExportButtonProps {
 
 export function CsvExportButton({ 
   administrators, 
-  universityName, 
-  className 
+  universityName
 }: CsvExportButtonProps) {
   
   const exportToCsv = () => {
