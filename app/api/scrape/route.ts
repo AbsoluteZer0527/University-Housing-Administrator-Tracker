@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
 import type { AnyNode } from "domhandler";
+import { POST as llmScrape } from "../llmscrape/route";
 
 import axios from "axios";
 
@@ -1437,6 +1438,22 @@ async function createUniversity(universityName: string, domain: string | null, h
 export async function POST(req: Request) {
 
   const { universityName } = await req.json();
+  // Try LLM first
+  try {
+  const llmRes = await llmScrape(new Request("http://localhost", {
+    method: "POST",
+    body: JSON.stringify({ universityName }),
+    headers: { "Content-Type": "application/json" },
+  }));
+
+  const llmData = await llmRes.json();
+
+  if (llmData.success && llmData.inserted > 0) {
+    return NextResponse.json({ ...llmData, source: "llm" });
+  }
+} catch (err) {
+  console.warn("⚠️ LLM failed, falling back:", err);
+}
   
   if (!universityName) {
     return NextResponse.json({ 
