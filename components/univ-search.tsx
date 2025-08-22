@@ -141,7 +141,7 @@ export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
       <CardHeader>
         <CardTitle>University Housing Administrator Search</CardTitle>
         <CardDescription >
-          Enter a university name to search for housing administrators
+          Enter full university name or abbreviation.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -11,7 +11,7 @@ export function FloatingBackground() {
     setMounted(true);
     
     // Add chaotic custom keyframes
-    if (theme === 'sunset') {
+    if (theme === 'crown') {
       const style = document.createElement('style');
       style.textContent = `
         @keyframes chaoticFloat1 {
@@ -112,7 +112,7 @@ export function FloatingBackground() {
     }
   }, [theme]);
 
-  if (!mounted || theme !== 'sunset') return null;
+  if (!mounted || theme !== 'crown') return null;
 
   // Generate MANY more chaotic crowns
   const crowns = Array.from({ length: 25 }, (_, i) => {
