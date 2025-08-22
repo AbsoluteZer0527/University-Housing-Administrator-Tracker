@@ -19,6 +19,11 @@ This is a Next.js website that automatically discovers and tracks contact inform
 - Sonner (Toast notifications)
 
 ## Updates:
+### V1.2 Update 8/22/2025: 
+- Fixed more dark UI issues and small adjustment to make it look better.
+- Added switch theme button! Contains different themes that users can choose from...?
+- Attempted to implement LLM on the background for scraping. However, the open source LLMs seem not to have the ability to search through and scrape from websites yet, so it just made stuff up. Meanwhile, the popular LLMs that have the search functionality (EX: ChatGPT) are not free. Right now the script is located in a separate branch, I will look back to it when I figure out a better solution.
+
 ### V1.1 Update 8/4/2025: 
 - Fixed dark mode UI problems, right now the texts should be readable.
 - disabled searched and refined direction texts for the non-logged-in page. 
