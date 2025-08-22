@@ -140,13 +140,14 @@ export function UniversitySearchForm({ user }: UniversitySearchFormProps) {
     <Card className="w-full max-w-md mt-8">
       <CardHeader>
         <CardTitle>University Housing Administrator Search</CardTitle>
-        <CardDescription>
+        <CardDescription >
           Enter a university name to search for housing administrators
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSearch} className="space-y-4">
           <Input
+            className="bg-background"
             placeholder="Enter university name..."
             value={universityName}
             onChange={(e) => setUniversityName(e.target.value)}

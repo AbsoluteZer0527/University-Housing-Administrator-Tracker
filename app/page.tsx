@@ -49,10 +49,10 @@ export default function Home() {
         <h1 className="text-3xl font-bold mb-2">
           University Housing Administrator Tracker
         </h1>
-        <p className="text-gray-600 max-w-md mb-6">
+        <p className="text-muted-foreground max-w-md mb-6">
           Search for university housing administrators, track outreach, and manage communication status. 
         </p>
-        <p className="text-gray-600 max-w-md mb-6 text-xs">
+        <p className="text-muted-foreground max-w-md mb-6 text-xs">
           Note: If the university is not found in the database, it will run the scraper and return at most 10 minutes, please be patient and wait until you get some result.
         </p>
         
@@ -60,7 +60,7 @@ export default function Home() {
         {/* Optional: Show login prompt if not authenticated */}
         {!user && (
           <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Please log in to search, view, and manage administrators.
             </p>
           </div>

@@ -122,6 +122,7 @@ export function AdministratorList({ administrators }: AdministratorListProps) {
                 placeholder="Search by name, role, or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-background"
                 />
             </div>
             <div className="w-full md:w-1/2">

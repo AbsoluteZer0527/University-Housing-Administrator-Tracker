@@ -31,16 +31,16 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
+    --background: 0 0% 10%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
+    --card: 0 0% 20%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 0 0% 9%;
     --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 0 0% 80%;
     --muted: 0 0% 14.9%;
     --muted-foreground: 0 0% 63.9%;
     --accent: 0 0% 14.9%;
@@ -55,6 +55,38 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+  }
+  .sunset {
+    /* #799EFF - soft blue */
+    --background: 48 100% 95%; /* light Yellow */
+    --foreground: 220 30% 20%; /* dark blue-gray for text */
+    --card: 0 0% 100%; /* white cards */
+    --card-foreground: 220 30% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 20%;
+    /* #799EFF converted to HSL: 220 100% 80% */
+    --primary: 220 100% 80%; /* #799EFF */
+    --primary-foreground: 220 30% 20%;
+    /* #FEFFC4 converted to HSL: 62 100% 90% */
+    --secondary: 62 100% 90%; /* #FEFFC4 */
+    --secondary-foreground: 220 30% 20%;
+    /* #FFDE63 converted to HSL: 48 100% 70% */
+    --muted: 48 100% 80%; /* lighter version of #FFDE63 */
+    --muted-foreground: 220 30% 40%;
+    --accent: 48 100% 70%; /* #FFDE63 */
+    --accent-foreground: 220 30% 20%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    /* Subtle borders using light yellow */
+    --border: 48 100% 85%;
+    --input: 48 100% 85%;
+    --ring: 220 100% 80%;
+    /* Custom chart colors using your palette */
+    --chart-1: 220 100% 80%; /* #799EFF */
+    --chart-2: 62 100% 90%; /* #FEFFC4 */
+    --chart-3: 48 100% 70%; /* #FFDE63 */
+    --chart-4: 35 100% 65%; /* #FFBC4C */
+    --chart-5: 220 50% 60%; /* variation of blue */
   }
 }
 

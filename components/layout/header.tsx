@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { AuthButton } from "@/components/auth-button";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 export function Header() {
   return (
@@ -11,6 +12,7 @@ export function Header() {
           <Link href="/" className="text-lg font-semibold tracking-tight hover:opacity-80 transition">
             Housing Admin Tracker
           </Link>
+          <ThemeSwitcher />
           <Link href="/">
             <Button variant="ghost" className="bg-muted">Home</Button>
           </Link>

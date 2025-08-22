@@ -4,6 +4,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Toaster } from "sonner";
+import { FloatingBackground } from '@/components/layout/floating-background';
 
 export const metadata: Metadata = {
   title: 'University Housing Administrator Tracker',
@@ -38,10 +39,12 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
+          themes={['light', 'dark', 'sunset']}
           enableSystem
           disableTransitionOnChange
         >
           <Header />
+          <FloatingBackground />
           {children}
           <Footer />
           <Toaster position="bottom-right" />

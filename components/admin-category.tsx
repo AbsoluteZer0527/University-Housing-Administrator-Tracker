@@ -180,7 +180,7 @@ export function CategoryAdministratorsList() {
             id={`${key}Category`}
             data-category={key}
           >
-            <CardHeader className={`${color} bg-opacity-10 text-black rounded-t-2xl`}>
+            <CardHeader className={`${color} bg-opacity-10 text-foreground rounded-t-2xl`}>
               <CardTitle className="text-center font-semibold">{label}</CardTitle>
             </CardHeader>
             <CardContent className="p-4 min-h-[200px]">
